@@ -44,6 +44,33 @@ static int read_feedback(int fd, int *temp_cent, int *umid_cent, int *pwm_aplica
     return 0;
 }
 
+static int write_full(int fd, const unsigned char *buf, size_t len) {
+    size_t total = 0;
+
+    while (total < len) {
+        ssize_t w = write(fd, buf + total, len - total);
+        if (w < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                struct timespec retry_delay = {.tv_sec = 0, .tv_nsec = 1000000};
+                nanosleep(&retry_delay, NULL);
+                continue;
+            }
+            return -1;
+        }
+        if (w == 0) {
+            errno = EIO;
+            return -1;
+        }
+
+        total += (size_t)w;
+    }
+
+    return 0;
+}
+
 static void validate_and_update(State *st, int temp_cent, int umid_cent,
                                 int pwm_aplicado) {
     float temp_c = temp_cent / 100.0f;
@@ -127,16 +154,16 @@ void *i2c_thread_func(void *arg) {
         printf("I2C enviando comando 0x%02X com duty_req=%d%% (clamp=%d%%)\n",
                tx[0], snap.duty_req, duty);
 
-        ssize_t w = write(fd, tx, sizeof(tx));
-        if (w != (ssize_t)sizeof(tx)) {
+        if (write_full(fd, tx, sizeof(tx)) != 0) {
             char errmsg[128];
-            snprintf(errmsg, sizeof(errmsg), "Erro I2C: escrita %zd/2 bytes", w);
+            snprintf(errmsg, sizeof(errmsg), "Erro I2C: falha na escrita (%s)",
+                     strerror(errno));
             state_set_i2c_error(args->st, errmsg);
             sleep_seconds(cfg_local.i2c_period_s);
             continue;
         }
 
-        printf("I2C escrita OK (%zd bytes). Aguardando feedback...\n", w);
+        printf("I2C escrita OK (%zu bytes). Aguardando feedback...\n", sizeof(tx));
 
         int temp_cent = 0, umid_cent = 0, pwm_aplicado = 0;
         if (read_feedback(fd, &temp_cent, &umid_cent, &pwm_aplicado) != 0) {
