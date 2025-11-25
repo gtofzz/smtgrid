@@ -10,7 +10,7 @@ void config_init_defaults(Config *cfg) {
     memset(cfg, 0, sizeof(*cfg));
     pthread_mutex_init(&cfg->lock, NULL);
 
-    snprintf(cfg->broker_address, sizeof(cfg->broker_address), "localhost");
+    snprintf(cfg->broker_address, sizeof(cfg->broker_address), "127.0.0.1");
     cfg->broker_port = 1883;
     snprintf(cfg->client_id_base, sizeof(cfg->client_id_base), "raspi-no-i2c");
     snprintf(cfg->cmd_luz_topic, sizeof(cfg->cmd_luz_topic), "cmd/luz");
