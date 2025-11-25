@@ -25,6 +25,11 @@ int main(void) {
 
     Config cfg;
     config_init_defaults(&cfg);
+    if (config_load_mqtt_from_file(&cfg, "mqtt.conf")) {
+        printf("MQTT config carregada de mqtt.conf\n");
+    } else {
+        printf("mqtt.conf não encontrado ou inválido, usando defaults.\n");
+    }
     config_print(&cfg);
 
     State st;

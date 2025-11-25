@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 void config_init_defaults(Config *cfg) {
@@ -25,6 +26,45 @@ void config_init_defaults(Config *cfg) {
 
     cfg->pub_period_s = 1.0;
     cfg->i2c_period_s = 0.5;
+}
+
+bool config_load_mqtt_from_file(Config *cfg, const char *path) {
+    if (!cfg || !path) {
+        return false;
+    }
+
+    FILE *f = fopen(path, "r");
+    if (!f) {
+        return false;
+    }
+
+    char line[256];
+    bool updated = false;
+    while (fgets(line, sizeof(line), f)) {
+        char key[64];
+        char value[128];
+        if (sscanf(line, " %63[^=]=%127s", key, value) != 2) {
+            continue;
+        }
+
+        if (strcmp(key, "broker_address") == 0) {
+            pthread_mutex_lock(&cfg->lock);
+            snprintf(cfg->broker_address, sizeof(cfg->broker_address), "%s", value);
+            pthread_mutex_unlock(&cfg->lock);
+            updated = true;
+        } else if (strcmp(key, "broker_port") == 0) {
+            int port = atoi(value);
+            if (port > 0) {
+                pthread_mutex_lock(&cfg->lock);
+                cfg->broker_port = port;
+                pthread_mutex_unlock(&cfg->lock);
+                updated = true;
+            }
+        }
+    }
+
+    fclose(f);
+    return updated;
 }
 
 void config_print(const Config *cfg) {
