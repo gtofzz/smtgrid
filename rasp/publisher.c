@@ -30,7 +30,16 @@ void *publisher_thread_func(void *arg) {
             mqtt_publish_status(&cfg_local, args->st, mosq, status_msg, detail);
         }
 
-        usleep((useconds_t)(cfg_local.pub_period_s * 1e6));
+        double seconds = cfg_local.pub_period_s;
+        if (seconds < 0) {
+            seconds = 0;
+        }
+
+        struct timespec sleep_time;
+        sleep_time.tv_sec = (time_t)seconds;
+        sleep_time.tv_nsec = (long)((seconds - (double)sleep_time.tv_sec) * 1e9);
+
+        nanosleep(&sleep_time, NULL);
     }
 
     return NULL;
