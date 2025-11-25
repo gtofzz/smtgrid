@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <time.h>
 #include <unistd.h>
 
 static int set_slave_address(int fd, int addr) {
@@ -54,6 +55,20 @@ static void validate_and_update(State *st, int temp_cent, int umid_cent,
     state_clear_i2c_error(st);
 }
 
+static void sleep_seconds(double seconds) {
+    if (seconds <= 0) {
+        return;
+    }
+
+    struct timespec req;
+    req.tv_sec = (time_t)seconds;
+    req.tv_nsec = (long)((seconds - req.tv_sec) * 1e9);
+
+    while (nanosleep(&req, &req) == -1 && errno == EINTR) {
+        continue;
+    }
+}
+
 void *i2c_thread_func(void *arg) {
     I2CThreadArgs *args = (I2CThreadArgs *)arg;
     if (!args || !args->cfg || !args->st || !args->running) {
@@ -75,14 +90,14 @@ void *i2c_thread_func(void *arg) {
             fd = open_i2c_device(cfg_local.i2c_device);
             if (fd < 0) {
                 state_set_i2c_error(args->st, "Erro I2C: não abre /dev/i2c-1");
-                usleep((useconds_t)(cfg_local.i2c_period_s * 1e6));
+                sleep_seconds(cfg_local.i2c_period_s);
                 continue;
             }
         }
 
         if (set_slave_address(fd, cfg_local.i2c_address) != 0) {
             state_set_i2c_error(args->st, "Erro ao configurar endereço I2C");
-            usleep((useconds_t)(cfg_local.i2c_period_s * 1e6));
+            sleep_seconds(cfg_local.i2c_period_s);
             continue;
         }
 
@@ -104,20 +119,20 @@ void *i2c_thread_func(void *arg) {
             char errmsg[128];
             snprintf(errmsg, sizeof(errmsg), "Erro I2C: escrita %zd/2 bytes", w);
             state_set_i2c_error(args->st, errmsg);
-            usleep((useconds_t)(cfg_local.i2c_period_s * 1e6));
+            sleep_seconds(cfg_local.i2c_period_s);
             continue;
         }
 
         int temp_cent = 0, umid_cent = 0, pwm_aplicado = 0;
         if (read_feedback(fd, &temp_cent, &umid_cent, &pwm_aplicado) != 0) {
             state_set_i2c_error(args->st, "Erro I2C: leitura de feedback");
-            usleep((useconds_t)(cfg_local.i2c_period_s * 1e6));
+            sleep_seconds(cfg_local.i2c_period_s);
             continue;
         }
 
         validate_and_update(args->st, temp_cent, umid_cent, pwm_aplicado);
 
-        usleep((useconds_t)(cfg_local.i2c_period_s * 1e6));
+        sleep_seconds(cfg_local.i2c_period_s);
     }
 
     if (fd >= 0) {
