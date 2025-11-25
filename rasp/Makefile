@@ -2,22 +2,15 @@ CC ?= gcc
 CFLAGS ?= -Wall -Wextra -std=c11 -pthread
 LDFLAGS ?= -lmosquitto -pthread
 
-SRC := main.c config.c state.c mqtt_client.c i2c_link.c publisher.c cli.c
-OBJ := $(SRC:.c=.o)
-TARGET := no_mqtt_i2c
+TARGET ?= no_mqtt_i2c
+SRC := app.c
 
-.PHONY: all clean run
+.PHONY: all clean
 
 all: $(TARGET)
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $(OBJ) $(LDFLAGS)
-
-run: $(TARGET)
-	./$(TARGET)
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) -o $@ $(SRC) $(LDFLAGS)
 
 clean:
-	rm -f $(OBJ) $(TARGET)
+	rm -f $(TARGET)
