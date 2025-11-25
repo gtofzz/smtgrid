@@ -27,6 +27,7 @@ typedef struct {
 
 void config_init_defaults(Config *cfg);
 void config_print(const Config *cfg);
+bool config_load_mqtt_from_file(Config *cfg, const char *path);
 
 // Funções utilitárias para alterar configurações em tempo de execução
 // de maneira simples e minimamente segura (com mutex interno).

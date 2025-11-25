@@ -32,7 +32,8 @@ static int read_feedback(int fd, int *temp_cent, int *umid_cent, int *pwm_aplica
     unsigned char rx[5] = {0};
     ssize_t r = read(fd, rx, sizeof(rx));
     if (r != (ssize_t)sizeof(rx)) {
-        fprintf(stderr, "Leitura I2C incompleta (%zd bytes)\n", r);
+        fprintf(stderr, "Leitura I2C incompleta (%zd bytes), esperado 5 (errno=%d)\n",
+                r, errno);
         return -1;
     }
     int16_t temp_raw = (int16_t)(rx[1] << 8 | rx[0]);
@@ -48,9 +49,14 @@ static void validate_and_update(State *st, int temp_cent, int umid_cent,
     float temp_c = temp_cent / 100.0f;
     float umid = umid_cent / 100.0f;
     if (temp_c < -40.0f || temp_c > 125.0f || umid < 0.0f || umid > 100.0f) {
+        fprintf(stderr,
+                "I2C feedback fora da faixa: temp=%.2fC umid=%.2f%% pwm=%d\n",
+                temp_c, umid, pwm_aplicado);
         state_set_i2c_error(st, "Dados inválidos recebidos do STM32");
         return;
     }
+    printf("I2C feedback válido: temp=%.2fC umid=%.2f%% pwm_aplicado=%d\n",
+           temp_c, umid, pwm_aplicado);
     state_set_feedback(st, pwm_aplicado, temp_c, umid);
     state_clear_i2c_error(st);
 }
@@ -81,6 +87,8 @@ void *i2c_thread_func(void *arg) {
     int fd = open_i2c_device(cfg_local.i2c_device);
     if (fd < 0) {
         state_set_i2c_error(args->st, "Falha ao abrir dispositivo I2C");
+    } else {
+        printf("I2C aberto em %s (fd=%d)\n", cfg_local.i2c_device, fd);
     }
 
     while (atomic_load(args->running)) {
@@ -101,6 +109,8 @@ void *i2c_thread_func(void *arg) {
             continue;
         }
 
+        printf("I2C -> setando slave 0x%02X, comando PWM\n", cfg_local.i2c_address);
+
         StateSnapshot snap;
         state_get_snapshot(args->st, &snap);
         unsigned char tx[2];
@@ -114,6 +124,9 @@ void *i2c_thread_func(void *arg) {
         }
         tx[1] = (unsigned char)duty;
 
+        printf("I2C enviando comando 0x%02X com duty_req=%d%% (clamp=%d%%)\n",
+               tx[0], snap.duty_req, duty);
+
         ssize_t w = write(fd, tx, sizeof(tx));
         if (w != (ssize_t)sizeof(tx)) {
             char errmsg[128];
@@ -122,6 +135,8 @@ void *i2c_thread_func(void *arg) {
             sleep_seconds(cfg_local.i2c_period_s);
             continue;
         }
+
+        printf("I2C escrita OK (%zd bytes). Aguardando feedback...\n", w);
 
         int temp_cent = 0, umid_cent = 0, pwm_aplicado = 0;
         if (read_feedback(fd, &temp_cent, &umid_cent, &pwm_aplicado) != 0) {
