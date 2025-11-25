@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/i2c-dev.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -108,6 +109,8 @@ void *i2c_thread_func(void *arg) {
         return NULL;
     }
 
+    bool driver_sem_suporte = false;
+
     Config cfg_local;
     config_copy(&cfg_local, args->cfg);
 
@@ -155,9 +158,23 @@ void *i2c_thread_func(void *arg) {
                tx[0], snap.duty_req, duty);
 
         if (write_full(fd, tx, sizeof(tx)) != 0) {
-            char errmsg[128];
+            int err = errno;
+            char errmsg[160];
+
+            if (err == EOPNOTSUPP || err == ENOTTY) {
+                snprintf(errmsg, sizeof(errmsg),
+                         "I2C desativado: driver não suporta escrita (errno=%d)",
+                         err);
+                fprintf(stderr, "%s\n", errmsg);
+                state_set_i2c_error(args->st, errmsg);
+                driver_sem_suporte = true;
+                close(fd);
+                fd = -1;
+                break;
+            }
+
             snprintf(errmsg, sizeof(errmsg), "Erro I2C: falha na escrita (%s)",
-                     strerror(errno));
+                     strerror(err));
             state_set_i2c_error(args->st, errmsg);
             sleep_seconds(cfg_local.i2c_period_s);
             continue;
@@ -175,6 +192,10 @@ void *i2c_thread_func(void *arg) {
         validate_and_update(args->st, temp_cent, umid_cent, pwm_aplicado);
 
         sleep_seconds(cfg_local.i2c_period_s);
+    }
+
+    if (driver_sem_suporte) {
+        fprintf(stderr, "Thread I2C finalizada: driver sem suporte I/O.\n");
     }
 
     if (fd >= 0) {
