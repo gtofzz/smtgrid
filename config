@@ -1,0 +1,13 @@
+# Configurações compartilhadas para build
+CC ?= gcc
+COMMON_CFLAGS ?= -Wall -Wextra -O2
+COMMON_LDFLAGS ?= -lmosquitto -lpthread
+
+# Parâmetros MQTT
+MQTT_HOST ?= localhost
+MQTT_PORT ?= 1883
+MQTT_KEEPALIVE ?= 60
+
+# Parâmetros I2C
+I2C_DEVICE ?= /dev/i2c-1
+I2C_STM_ADDRESS ?= 0x20
