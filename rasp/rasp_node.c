@@ -34,9 +34,17 @@
 // ============================
 
 // MQTT
+#ifndef MQTT_HOST_DEFAULT
 #define MQTT_HOST_DEFAULT   "localhost"
+#endif
+
+#ifndef MQTT_PORT_DEFAULT
 #define MQTT_PORT_DEFAULT   1883
+#endif
+
+#ifndef MQTT_KEEPALIVE
 #define MQTT_KEEPALIVE      60
+#endif
 
 #define TOPIC_CMD_PWM       "cmd/luz"
 #define TOPIC_SENSORES      "cmd/sensores"
@@ -44,8 +52,13 @@
 
 // I2C real
 #ifndef SIM_I2C
+    #ifndef I2C_DEVICE_DEFAULT
     #define I2C_DEVICE_DEFAULT  "/dev/i2c-1"
+    #endif
+
+    #ifndef I2C_STM_ADDRESS
     #define I2C_STM_ADDRESS     0x20   // ajuste depois se necessário
+    #endif
 #endif
 
 // Períodos das threads

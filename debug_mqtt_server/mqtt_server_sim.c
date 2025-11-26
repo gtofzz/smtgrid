@@ -25,9 +25,17 @@
 
 #include <mosquitto.h>
 
+#ifndef MQTT_HOST_DEFAULT
 #define MQTT_HOST_DEFAULT   "localhost"
+#endif
+
+#ifndef MQTT_PORT_DEFAULT
 #define MQTT_PORT_DEFAULT   1883
+#endif
+
+#ifndef MQTT_KEEPALIVE
 #define MQTT_KEEPALIVE      60
+#endif
 
 #define TOPIC_CMD_PWM       "cmd/luz"
 #define TOPIC_SENSORES      "cmd/sensores"
