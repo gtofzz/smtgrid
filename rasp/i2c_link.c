@@ -168,6 +168,7 @@ void *i2c_thread_func(void *arg) {
                 fprintf(stderr, "%s\n", errmsg);
                 state_set_i2c_error(args->st, errmsg);
                 driver_sem_suporte = true;
+                atomic_store(args->running, false);
                 close(fd);
                 fd = -1;
                 break;
