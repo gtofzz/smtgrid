@@ -1,18 +1,22 @@
-CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -pedantic -O2
-LDFLAGS :=
-TARGET := mqtt_debug_server
-SRC := main.cpp
+# Makefile para mqtt_server_sim
+# Uso:
+#   make        -> compila mqtt_server_sim
+#   make clean  -> remove binário
 
-all: $(TARGET)
+CC      := gcc
+CFLAGS  := -Wall -Wextra -O2
+LDFLAGS := -lmosquitto -lpthread
 
-$(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) -o $@ $(SRC) $(LDFLAGS)
+SRC     := mqtt_server_sim.c
+BIN     := mqtt_server_sim
 
-run: $(TARGET)
-	./$(TARGET)
+.PHONY: all clean
+
+all: $(BIN)
+
+$(BIN): $(SRC)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(BIN)
 
-.PHONY: all clean run
